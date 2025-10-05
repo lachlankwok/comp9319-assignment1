@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
 
     cout << argc << endl;
 
-    encode("TOBEORNOTTOBE", 40);
+    encode("TOBEORNOTTOBEORTOBEORNOT", 10);
     return 0;
 }
 
@@ -47,6 +47,8 @@ uint32_t encode(string input, uint32_t reset_freq) {
 
     uint32_t code_count = ASCII_END;
     string prev = "";
+    uint32_t read_bytes = 0;
+
     for (char c : input) {
         if (dictionary.find(prev + c) != dictionary.end()) {
             prev = prev + c;
@@ -55,12 +57,32 @@ uint32_t encode(string input, uint32_t reset_freq) {
             code_count++;
 
             // Output the binary
-            u_int32_t output = dictionary.find(prev)->second;
-            toBits(output);
-            
+            if (!prev.empty()) {
+                u_int32_t output = dictionary[prev];
+                toBits(output);
+            }
+
             prev = string(1, c);
         }
 
+        // Reset the dictionary
+        read_bytes++;
+        if (read_bytes == reset_freq && reset_freq != 0) {
+            // Need to output remaining prev
+            if (!prev.empty()) {
+                toBits(dictionary[prev]);
+            }
+
+            initDictionary(dictionary);
+            code_count = ASCII_END;
+            prev = "";
+            read_bytes = 0;
+        }
+    }
+
+    // Need to output remaining prev
+    if (!prev.empty()) {
+        toBits(dictionary[prev]);
     }
 
     return 1;
@@ -76,14 +98,27 @@ u_int32_t header(u_int32_t reset_req) {
 // Bits
 u_int32_t toBits(u_int32_t code) {
 
-
-    if (code < pow(2, 7)) {
+    if (code < (1u << 8)) {
         bitset<8> binary(code);
         cout << binary << " ";
-    } else if (code < pow(2, 14)) {
+    } else if (code < (1u << 14)) {
+        // Append 10 - it is 2 bytes long
+        uint16_t bits = code & 0x3FFF;
+        bits |= (1u << 15);
 
+        // Write high byte then low byte (big-endian)
+        uint8_t high = (bits >> 8) & 0xFF;
+        uint8_t low  = bits & 0xFF;
+        cout << bitset<8>(high) << " " << bitset<8>(low) << " ";
     } else {
-
+        // Append 11 - it is 3 bytes long
+        uint32_t bits = code & 0x3FFFFF; // 22 bits
+        bits |= (3u << 22);              // leading '11' in top bits
+        // Write 3 bytes big-endian
+        uint8_t b1 = (bits >> 16) & 0xFF;
+        uint8_t b2 = (bits >> 8)  & 0xFF;
+        uint8_t b3 = bits & 0xFF;
+        cout << bitset<8>(b1) << " " << bitset<8>(b2) << " " << bitset<8>(b3) << " ";
     }
 
     return 0;
@@ -91,6 +126,7 @@ u_int32_t toBits(u_int32_t code) {
 
 // Initialise dictionary
 void initDictionary(unordered_map<string, u_int32_t>& dictionary) {
+    dictionary.clear();
     for (int i = 0; i < ASCII_END; i++) {
         string character(1, static_cast<char>(i));
         dictionary[character] = i;

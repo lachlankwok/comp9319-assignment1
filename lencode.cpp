@@ -1,6 +1,5 @@
 #include <iostream>
 #include <unordered_map>
-#include <bitset>
 #include <fstream>
 #include <iostream>
 
@@ -86,7 +85,7 @@ uint32_t encode(string input_path, string output_path, uint32_t reset_freq) {
         // Add "pc" to dictionary and output code(p); p = c
         } else {
             // Add "pc" to dictionary
-            dictionary[prev + c] = code_count;
+            dictionary[prev + c] = code_count; ////////////////////////////////////////// 4,194,304 entries max dictionary TODO!
             code_count++;
 
             // Output the binary bytes into output file

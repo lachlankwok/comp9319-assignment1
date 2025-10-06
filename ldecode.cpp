@@ -23,6 +23,7 @@ void initDictionary(unordered_map<uint32_t, string>& dictionary);
 // /////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////// MAIN //////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char **argv) {
     // Error checking - requires 2 arguments
     if (argc != 3) {
@@ -38,6 +39,10 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+
+// /////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////// HELPER //////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 
 uint32_t decode(string input_path, string output_path) {
 
@@ -100,17 +105,22 @@ uint32_t decode(string input_path, string output_path) {
         }
         out_file.write(entry.data(), entry.size());
 
-        dictionary[code_count] = prev + entry[0];
-        code_count++;
+        // Add to the dictionary if the dictionary isn't full
+        if (code_count < (1u << 22)) {
+            dictionary[code_count] = prev + entry[0];
+            code_count++;
+        }
         prev = entry;
 
         // Reset the dictionary if N has been reached
-        read_bytes += entry.size();
-        if (read_bytes >= reset_freq && reset_freq != 0) {
-            initDictionary(dictionary);
-            code_count = ASCII_END;
-            prev = "";
-            read_bytes = 0;
+        if (reset_freq != 0) {
+            read_bytes += entry.size();
+            if (read_bytes >= reset_freq) {
+                initDictionary(dictionary);
+                code_count = ASCII_END;
+                prev = "";
+                read_bytes = 0;
+            }
         }
     }
 

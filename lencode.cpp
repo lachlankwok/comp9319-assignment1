@@ -24,6 +24,7 @@ void initDictionary(unordered_map<string, u_int32_t>& dictionary);
 // /////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////////// MAIN //////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////
+
 int main(int argc, char **argv) {
     // Error checking - requires 3 arguments
     if (argc != 4) {
@@ -41,6 +42,10 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+// /////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////// HELPER //////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+
 /**
  * Encode given input file into output file with given N reset frequency
  *
@@ -49,7 +54,6 @@ int main(int argc, char **argv) {
  * reset_freq:  uint32_t    - every reset_freq bytes, the dictionary resets
  */
 uint32_t encode(string input_path, string output_path, uint32_t reset_freq) {
-
     // Initialise the dictionary
     unordered_map<string, uint32_t> dictionary = {};
     initDictionary(dictionary);

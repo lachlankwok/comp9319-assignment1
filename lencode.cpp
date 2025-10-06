@@ -85,9 +85,11 @@ uint32_t encode(string input_path, string output_path, uint32_t reset_freq) {
 
         // Add "pc" to dictionary and output code(p); p = c
         } else {
-            // Add "pc" to dictionary
-            dictionary[prev + c] = code_count; ////////////////////////////////////////// 4,194,304 entries max dictionary TODO!
-            code_count++;
+            // Add "pc" to dictionary only if not full (4,194,304 entries)
+            if (code_count < (1u << 22)) {
+                dictionary[prev + c] = code_count;
+                code_count++;
+            }
 
             // Output the binary bytes into output file
             if (!prev.empty()) {
@@ -99,18 +101,23 @@ uint32_t encode(string input_path, string output_path, uint32_t reset_freq) {
         }
 
         // Reset the dictionary if N has been reached
-        read_bytes++;
-        if (read_bytes == reset_freq && reset_freq != 0) {
-            // Need to output the remaining prev
-            if (!prev.empty()) {
-                toBits(dictionary[prev], out_file);
-            }
+        // Increment read_bytes if reset is enabled
+        if (reset_freq != 0) {
+            read_bytes++;
 
-            // Reset the dictionary
-            initDictionary(dictionary);
-            code_count = ASCII_END;
-            prev = "";
-            read_bytes = 0;
+            // Check if reset is needed
+            if (read_bytes >= reset_freq) {
+                // Flush the current prev
+                if (!prev.empty()) {
+                    toBits(dictionary[prev], out_file);
+                }
+
+                // Reset dictionary
+                initDictionary(dictionary);
+                code_count = ASCII_END;
+                prev = "";
+                read_bytes = 0;
+            }
         }
     }
 

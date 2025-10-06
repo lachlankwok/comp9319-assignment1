@@ -10,6 +10,7 @@ using namespace std;
 // /////////////////////////////////////////////////////////////////////////////
 
 #define ASCII_END 256
+#define EIGHT_ONE_BITS 0b11111111
 
 // /////////////////////////////////////////////////////////////////////////////
 // ///////////////////////////// FUNCTION HEADERS //////////////////////////////
@@ -133,10 +134,10 @@ uint32_t encode(string input_path, string output_path, uint32_t reset_freq) {
  */
 void header(u_int32_t reset_freq, ofstream &out_file) {
     // Get the 4 bytes to write into output file in big endian
-    uint8_t b1 = ((reset_freq) >> 24) & 0xFF;
-    uint8_t b2 = ((reset_freq) >> 16) & 0xFF;
-    uint8_t b3 = ((reset_freq) >> 8) & 0xFF;
-    uint8_t b4 = reset_freq & 0xFF;
+    uint8_t b1 = ((reset_freq) >> 24) & EIGHT_ONE_BITS;
+    uint8_t b2 = ((reset_freq) >> 16) & EIGHT_ONE_BITS;
+    uint8_t b3 = ((reset_freq) >> 8) & EIGHT_ONE_BITS;
+    uint8_t b4 = reset_freq & EIGHT_ONE_BITS;
 
     out_file.put(b1);
     out_file.put(b2);
@@ -153,28 +154,28 @@ void header(u_int32_t reset_freq, ofstream &out_file) {
  */
 void toBits(u_int32_t code, ofstream &out_file) {
     if (code < (1u << 8)) {
-        uint8_t byte = code & 0x7F;
+        uint8_t byte = code & 0b111'1111;
         out_file.put(static_cast<char>(byte));
     } else if (code < (1u << 14)) {
         // Append 10 - it is 2 bytes long
-        uint16_t bits = code & 0x3FFF;
+        uint16_t bits = code & 0b11'1111'1111'1111;
         bits |= (1u << 15);
 
         // Write high byte then low byte (big-endian)
-        uint8_t high = (bits >> 8) & 0xFF;
-        uint8_t low  = bits & 0xFF;
+        uint8_t high = (bits >> 8) & EIGHT_ONE_BITS;
+        uint8_t low  = bits & EIGHT_ONE_BITS;
 
         out_file.put(static_cast<char>(high));
         out_file.put(static_cast<char>(low));
     } else {
         // Append '11' - it is 3 bytes long - 22 bits of code
-        uint32_t bits = code & 0x3FFFFF;
+        uint32_t bits = code & 0b111111'11111111'11111111;
         bits |= (3u << 22);
 
         // Write 3 bytes big-endian
-        uint8_t b1 = (bits >> 16) & 0xFF;
-        uint8_t b2 = (bits >> 8)  & 0xFF;
-        uint8_t b3 = bits & 0xFF;
+        uint8_t b1 = (bits >> 16) & EIGHT_ONE_BITS;
+        uint8_t b2 = (bits >> 8)  & EIGHT_ONE_BITS;
+        uint8_t b3 = bits & EIGHT_ONE_BITS;
 
         out_file.put(static_cast<char>(b1));
         out_file.put(static_cast<char>(b2));

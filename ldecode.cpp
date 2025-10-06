@@ -16,7 +16,7 @@ using namespace std;
 // /////////////////////////////////////////////////////////////////////////////
 
 uint32_t decode(string input_path, string output_path);
-uint32_t get_header(ifstream &in_file);
+uint32_t getHeader(ifstream &in_file);
 uint32_t readCode(ifstream &in_file);
 void initDictionary(unordered_map<uint32_t, string>& dictionary);
 
@@ -60,7 +60,7 @@ uint32_t decode(string input_path, string output_path) {
     }
 
     // Determine what the reset number is
-    uint32_t reset_freq = get_header(in_file);
+    uint32_t reset_freq = getHeader(in_file);
 
     // Initialise variables for dictionary (how many codes, prev, read_bytes)
     uint32_t code_count = ASCII_END;
@@ -72,16 +72,16 @@ uint32_t decode(string input_path, string output_path) {
     // Read all bytes from the input file and encode them
     while (true) {
         if (read_bytes == 0) {
-            // First item:
+            // First item and output
             c = readCode(in_file);
-            // Output the first item:
             entry = dictionary[c];
             out_file.write(entry.data(), entry.size());
 
             prev = entry;
+
+            // Reset the dictionary if N has been reached
             read_bytes += entry.size();
             if (read_bytes >= reset_freq && reset_freq != 0) {
-                // Reset the dictionary
                 initDictionary(dictionary);
                 code_count = ASCII_END;
                 prev = "";
@@ -91,11 +91,11 @@ uint32_t decode(string input_path, string output_path) {
 
         c = readCode(in_file);
         if (c == UINT32_MAX) break;
-        // output Dict[c]; add p + Dict[c][0] to Dict; p = Dict[c]
+
         if (dictionary.find(c) != dictionary.end()) {
             entry = dictionary[c];
         } else if (c == code_count) {
-            // Special case: KwKwK case
+            // Special case - KwKwK case
             entry = prev + prev[0];
         }
         out_file.write(entry.data(), entry.size());
@@ -107,13 +107,12 @@ uint32_t decode(string input_path, string output_path) {
         // Reset the dictionary if N has been reached
         read_bytes += entry.size();
         if (read_bytes >= reset_freq && reset_freq != 0) {
-            // Reset the dictionary
             initDictionary(dictionary);
             code_count = ASCII_END;
             prev = "";
             read_bytes = 0;
         }
-    } 
+    }
 
     // Close the output and input files
     out_file.close();
@@ -123,12 +122,11 @@ uint32_t decode(string input_path, string output_path) {
 }
 
 /**
- * Given the output file and the reset frequency, write the frequency in bytes
+ * Given the input file, get the reset frequency
  *
- * reset_freq: uint32_t    - 4 bytes worth (a number)
- * outfile: ofstream &      - the output file
+ * in_file: ifstream &      - the input file to read from
  */
-uint32_t get_header(ifstream &in_file) {
+uint32_t getHeader(ifstream &in_file) {
     unsigned char buffer[4];
     in_file.read(reinterpret_cast<char*>(buffer), 4);
 
@@ -140,19 +138,30 @@ uint32_t get_header(ifstream &in_file) {
     return reset_freq;
 }
 
+/**
+ * Decoding the code from the input file. Note that it depends on what the code
+ * is:
+ * 1 byte: 0xxxxxxx
+ * 2 byte: 10xxxxxx yyyyyyyy
+ * 3 byte: 11xxxxxx yyyyyyyy zzzzzzzz
+ * The code needs to remove the leading one/two bits
+ * 
+ * in_file: ifstream &      - the input file to read from
+ */
 uint32_t readCode(ifstream &in_file) {
     char first = in_file.get();
     if (first == EOF) return UINT32_MAX;
 
     uint8_t b1 = static_cast<uint8_t>(first);
 
-    if ((b1 & 0x80) == 0) {
+    if ((b1 & 0b10000000) == 0) {
         // 0xxxxxxx
         return b1 & 0b1111111;
-    } else if ((b1 & 0xC0) == 0x80) {
+    } else if ((b1 & 0b11000000) == 0b10000000) {
         // 10xxxxxx yyyyyyyy
         int second = in_file.get();
         if (second == EOF) return UINT32_MAX;
+
         uint8_t b2 = static_cast<uint8_t>(second);
         uint16_t code = ((b1 & 0b111111) << 8) | b2;
         return code;
@@ -161,6 +170,7 @@ uint32_t readCode(ifstream &in_file) {
         int second = in_file.get();
         int third = in_file.get();
         if (second == EOF || third == EOF) return UINT32_MAX;
+
         uint8_t b2 = static_cast<uint8_t>(second);
         uint8_t b3 = static_cast<uint8_t>(third);
         uint16_t code = ((b1 & 0b111111) << 16) | (b2 << 8) | b3;
